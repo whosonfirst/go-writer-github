@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	_ "log"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -30,6 +31,7 @@ type GitHubAPIWriter struct {
 	owner     string
 	repo      string
 	branch    string
+	prefix    string
 	client    *github.Client
 	user      *github.User
 	throttle  <-chan time.Time
@@ -105,6 +107,9 @@ func (wr *GitHubAPIWriter) Open(ctx context.Context, uri string) error {
 	wr.user = user
 	wr.templates = templates
 
+	prefix := q.Get("prefix")
+	wr.prefix = prefix
+
 	return nil
 }
 
@@ -154,7 +159,13 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadClos
 
 }
 
-func (r *GitHubAPIWriter) URI(key string) string {
+func (wr *GitHubAPIWriter) URI(key string) string {
 
-	return fmt.Sprintf("data/%s", key)
+	uri := key
+
+	if wr.prefix != "" {
+		uri = filepath.Join(wr.prefix, key)
+	}
+
+	return uri
 }
