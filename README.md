@@ -2,6 +2,8 @@
 
 GitHub API support for the [go-writer](https://github.com/whosonfirst/go-writer) `Writer` interface.
 
+This package supersedes the [go-whosonfirst-readwrite-github](https://github.com/whosonfirst/go-whosonfirst-readwrite-github) package.
+
 ## Example
 
 ```
