@@ -100,6 +100,14 @@ func (wr *GitHubAPIWriter) Open(ctx context.Context, uri string) error {
 	new_template := q.Get("new")
 	update_template := q.Get("update")
 
+	if new_template == "" {
+		new_template = "Created %s"
+	}
+
+	if update_template == "" {
+		update_template = "Updated %s"
+	}
+	
 	templates := &GitHubAPIWriterCommitTemplates{
 		New:    new_template,
 		Update: update_template,

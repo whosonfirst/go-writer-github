@@ -12,8 +12,8 @@ import (
 	"fmt"
 )
 
-var source = flag.String("source", "", "...")
-var uri = flag.String("uri", "", "...")
+var source = flag.String("source", "", "A valid githubapi:// (go-writer-github) URI.")
+var uri = flag.String("uri", "", "The URI to write your file to.")
 
 func TestAPIWriter(t *testing.T) {
 
