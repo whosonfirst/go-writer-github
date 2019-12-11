@@ -58,29 +58,31 @@ func (wr *GitHubAPIWriter) Open(ctx context.Context, uri string) error {
 		return err
 	}
 
+	wr.owner = u.Host
+	
 	path := strings.TrimLeft(u.Path, "/")
 	parts := strings.Split(path, "/")
 
-	if len(parts) < 2 {
+	if len(parts) != 1 {
 		return errors.New("Invalid path")
 	}
 
-	wr.owner = parts[0]
-	wr.repo = parts[1]
+	wr.repo = parts[0]
 	wr.branch = "master"
-
-	if len(parts) == 3 {
-		wr.branch = parts[2]
-	}
 
 	q := u.Query()
 
 	token := q.Get("access_token")
+	branch := q.Get("branch")	
 
 	if token == "" {
 		return errors.New("Missing access token")
 	}
 
+	if branch != "" {
+		wr.branch = branch
+	}
+	
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
