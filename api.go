@@ -55,7 +55,7 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 	}
 
 	repo := parts[0]
-	branch := "master"
+	branch := DEFAULT_BRANCH
 
 	q := u.Query()
 
