@@ -4,9 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/whosonfirst/go-ioutil"
 	"github.com/whosonfirst/go-writer"
 	_ "github.com/whosonfirst/go-writer-github"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -37,11 +37,15 @@ func TestAPIWriter(t *testing.T) {
 	msg := fmt.Sprintf("This is a test: %v", now)
 
 	br := strings.NewReader(msg)
-	fh := ioutil.NopCloser(br)
-
-	err = wr.Write(ctx, *uri, fh)
+	fh, err := ioutil.NewReadSeekCloser(br)
 
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Failed to create new io.ReadSeekCloser, %v", err)
+	}
+
+	_, err = wr.Write(ctx, *uri, fh)
+
+	if err != nil {
+		t.Fatalf("Failed to write %s, %v", *uri, err)
 	}
 }

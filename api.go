@@ -119,17 +119,17 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 	return wr, nil
 }
 
-func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadCloser) error {
+func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeeker) (int64, error) {
 
 	<-wr.throttle
 
 	body, err := ioutil.ReadAll(fh)
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	url := wr.URI(uri)
+	url := wr.WriterURI(ctx, uri)
 
 	commit_msg := fmt.Sprintf(wr.templates.New, url)
 	name := *wr.user.Login
@@ -158,14 +158,14 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadClos
 	_, _, err = wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return 0, nil
 
 }
 
-func (wr *GitHubAPIWriter) URI(key string) string {
+func (wr *GitHubAPIWriter) WriterURI(ctx context.Context, key string) string {
 
 	uri := key
 
