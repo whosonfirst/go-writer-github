@@ -12,6 +12,7 @@ import (
 	_ "log"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,14 +24,15 @@ type GitHubAPIWriterCommitTemplates struct {
 
 type GitHubAPIWriter struct {
 	wof_writer.Writer
-	owner     string
-	repo      string
-	branch    string
-	prefix    string
-	client    *github.Client
-	user      *github.User
-	throttle  <-chan time.Time
-	templates *GitHubAPIWriterCommitTemplates
+	owner              string
+	repo               string
+	branch             string
+	prefix             string
+	client             *github.Client
+	user               *github.User
+	throttle           <-chan time.Time
+	templates          *GitHubAPIWriterCommitTemplates
+	retry_on_ratelimit bool
 }
 
 func init() {
@@ -102,18 +104,33 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		Update: update_template,
 	}
 
+	retry := false
+	str_retry := q.Get("retry-on-ratelimit")
+
+	if str_retry != "" {
+
+		r, err := strconv.ParseBool(str_retry)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse retry-on-ratelimit parameter, %w", err)
+		}
+
+		retry = r
+	}
+
 	rate := time.Second / 3
 	throttle := time.Tick(rate)
 
 	wr := &GitHubAPIWriter{
-		client:    client,
-		owner:     u.Host,
-		user:      user,
-		repo:      repo,
-		branch:    branch,
-		prefix:    prefix,
-		templates: templates,
-		throttle:  throttle,
+		client:             client,
+		owner:              u.Host,
+		user:               user,
+		repo:               repo,
+		branch:             branch,
+		prefix:             prefix,
+		templates:          templates,
+		throttle:           throttle,
+		retry_on_ratelimit: retry,
 	}
 
 	return wr, nil
@@ -159,14 +176,9 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 
 	if err != nil {
 
-		// Are we a rate-limit error
-		// If we are sleep until x-ratelimit-reset: {TIMESTAMP}
-		// Rewind FH
-		// return self
-
 		ratelimit_err, is_ratelimit := err.(*github.RateLimitError)
 
-		if !is_ratelimit {
+		if !is_ratelimit || !wr.retry_on_ratelimit {
 			return 0, fmt.Errorf("Failed to update %s, %w", url, err)
 		}
 
