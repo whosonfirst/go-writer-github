@@ -1,2 +1,2 @@
 // package github provides GitHub API support for https://github.com/whosonfirst/go-writer `Writer` interface.
-github
+package github
