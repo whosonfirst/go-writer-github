@@ -158,7 +158,37 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 	_, _, err = wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
 
 	if err != nil {
-		return 0, err
+
+		// Are we a rate-limit error
+		// If we are sleep until x-ratelimit-reset: {TIMESTAMP}
+		// Rewind FH
+		// return self
+
+		ratelimit_err, is_ratelimit := err.(*github.RateLimitError)
+
+		if !is_ratelimit {
+			return 0, fmt.Errorf("Failed to update %s, %w", url, err)
+		}
+
+		_, err = fh.Seek(0, 0)
+
+		if err != nil {
+			return 0, fmt.Errorf("Trigger a rate limit error but unable to rewind filehandle, %w", err)
+		}
+
+		rate := ratelimit_err.Rate
+		reset := rate.Reset
+		then := reset.Unix()
+
+		now := time.Now()
+		ts := now.Unix()
+
+		wait := then - ts
+		duration := time.Duration(time.Duration(wait) * time.Second)
+
+		time.Sleep(duration)
+
+		return wr.Write(ctx, uri, fh)
 	}
 
 	return 0, nil
