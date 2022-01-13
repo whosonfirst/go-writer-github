@@ -162,7 +162,9 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 		},
 	}
 
-	get_opts := &github.RepositoryContentGetOptions{}
+	get_opts := &github.RepositoryContentGetOptions{
+		Ref: wr.branch,
+	}
 
 	get_rsp, _, _, err := wr.client.Repositories.GetContents(ctx, wr.owner, wr.repo, url, get_opts)
 
