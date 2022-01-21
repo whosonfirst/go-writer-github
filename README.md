@@ -64,7 +64,9 @@ The following query parameters are supported for `go-writer-github` writers:
 | branch | string | no | A valid Git repository branch. Default is `master`. |
 | new | string | no | A valid string for formatting new file commit messages. Default is `Created %s`. |
 | update | string | no | A valid string for formatting updated file commit messages. Default is `Updated %s`. |
-| retry-on-ratelimit | boolean (string) | no | If true and the writer encounters a GitHub rate-limit error trying to write data it will sleep until the "reset" time (published by GitHub) and retry the write operation. | 
+| retry-on-ratelimit | boolean (string) | no | If true and the writer encounters a GitHub rate-limit error trying to write data it will sleep until the "reset" time (published by GitHub) and retry the write operation. |
+| retry-on-409 | boolean (string) | no | If true and the writer encounters a GitHub 409 error trying to write data it will keep trying (by refreshing the current hash) until it succeeds, with the limits of the `?max-retry-attempts` flag. | 
+| max-retry-attempts | int | no | Default is 10. If <=0 then checks on the maximum number of retry attempts will be disabled. |
 
 ## See also
 

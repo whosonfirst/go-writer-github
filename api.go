@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,6 +34,9 @@ type GitHubAPIWriter struct {
 	throttle           <-chan time.Time
 	templates          *GitHubAPIWriterCommitTemplates
 	retry_on_ratelimit bool
+	retry_on_409       bool
+	retry_attempts     int32
+	max_retry_attempts int32
 }
 
 func init() {
@@ -104,18 +108,51 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		Update: update_template,
 	}
 
-	retry := false
-	str_retry := q.Get("retry-on-ratelimit")
+	retry_on_ratelimit := false
+	str_ratelimit := q.Get("retry-on-ratelimit")
 
-	if str_retry != "" {
+	if str_ratelimit != "" {
 
-		r, err := strconv.ParseBool(str_retry)
+		r, err := strconv.ParseBool(str_ratelimit)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse retry-on-ratelimit parameter, %w", err)
 		}
 
-		retry = r
+		retry_on_ratelimit = r
+	}
+
+	retry_on_409 := false
+	str_409 := q.Get("retry-on-409")
+
+	if str_409 != "" {
+
+		r, err := strconv.ParseBool(str_409)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse retry-on-409 parameter, %w", err)
+		}
+
+		retry_on_409 = r
+	}
+
+	max_retries := int32(10)
+
+	str_retries := q.Get("max-retry-attempts")
+
+	if str_retries != "" {
+
+		r, err := strconv.Atoi(str_retries)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse max-retry-attempts parameter, %w", err)
+		}
+
+		if r < 0 {
+			r = 0
+		}
+
+		max_retries = int32(r)
 	}
 
 	rate := time.Second / 3
@@ -130,7 +167,9 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		prefix:             prefix,
 		templates:          templates,
 		throttle:           throttle,
-		retry_on_ratelimit: retry,
+		retry_on_ratelimit: retry_on_ratelimit,
+		retry_on_409:       retry_on_409,
+		max_retry_attempts: max_retries,
 	}
 
 	return wr, nil
@@ -174,13 +213,23 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 		update_opts.SHA = get_rsp.SHA
 	}
 
-	_, _, err = wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
+	_, update_rsp, err := wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
 
 	if err != nil {
 
+		try_to_recover := false
+
+		if update_rsp.StatusCode == 409 && wr.retry_on_409 {
+			try_to_recover = true
+		}
+
 		ratelimit_err, is_ratelimit := err.(*github.RateLimitError)
 
-		if !is_ratelimit || !wr.retry_on_ratelimit {
+		if is_ratelimit && wr.retry_on_ratelimit {
+			try_to_recover = true
+		}
+
+		if !try_to_recover {
 			return 0, fmt.Errorf("Failed to update %s, %w", url, err)
 		}
 
@@ -189,6 +238,25 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 		if err != nil {
 			return 0, fmt.Errorf("Trigger a rate limit error but unable to rewind filehandle, %w", err)
 		}
+
+		// Try not to spin madly out of control
+
+		if wr.max_retry_attempts > 0 {
+
+			atomic.AddInt32(&wr.retry_attempts, 1)
+
+			if atomic.LoadInt32(&wr.retry_attempts) > wr.max_retry_attempts {
+				return 0, fmt.Errorf("Exceeded max retry attempts")
+			}
+		}
+
+		// 409 error
+
+		if update_rsp.StatusCode == 409 {
+			return wr.Write(ctx, uri, fh)
+		}
+
+		// rate limit
 
 		rate := ratelimit_err.Rate
 		reset := rate.Reset
