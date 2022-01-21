@@ -34,7 +34,7 @@ type GitHubAPIWriter struct {
 	throttle           <-chan time.Time
 	templates          *GitHubAPIWriterCommitTemplates
 	retry_on_ratelimit bool
-	retry_on_409       bool
+	retry_on_conflict  bool
 	retry_attempts     int32
 	max_retry_attempts int32
 }
@@ -122,22 +122,21 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		retry_on_ratelimit = r
 	}
 
-	retry_on_409 := false
-	str_409 := q.Get("retry-on-409")
+	retry_on_conflict := false
+	str_conflict := q.Get("retry-on-conflict")
 
-	if str_409 != "" {
+	if str_conflict != "" {
 
-		r, err := strconv.ParseBool(str_409)
+		r, err := strconv.ParseBool(str_conflict)
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse retry-on-409 parameter, %w", err)
+			return nil, fmt.Errorf("Failed to parse retry-on-conflict parameter, %w", err)
 		}
 
-		retry_on_409 = r
+		retry_on_conflict = r
 	}
 
 	max_retries := int32(10)
-
 	str_retries := q.Get("max-retry-attempts")
 
 	if str_retries != "" {
@@ -168,7 +167,7 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		templates:          templates,
 		throttle:           throttle,
 		retry_on_ratelimit: retry_on_ratelimit,
-		retry_on_409:       retry_on_409,
+		retry_on_conflict:  retry_on_conflict,
 		max_retry_attempts: max_retries,
 	}
 
@@ -215,11 +214,12 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 
 	_, update_rsp, err := wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
 
+
 	if err != nil {
 
 		try_to_recover := false
 
-		if update_rsp.StatusCode == 409 && wr.retry_on_409 {
+		if update_rsp.StatusCode == 409 && wr.retry_on_conflict {
 			try_to_recover = true
 		}
 
