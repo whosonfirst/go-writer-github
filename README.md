@@ -61,7 +61,7 @@ The following query parameters are supported for `go-writer-github` writers:
 | Name | Value | Required | Notes |
 | --- | --- | --- | --- |
 | access_token | string | yes | A valid GitHub API access token |
-| branch | string | no | A valid Git repository branch. Default is `master`. |
+| branch | string | no | A valid Git repository branch. Default is `main`. |
 | new | string | no | A valid string for formatting new file commit messages. Default is `Created %s`. |
 | update | string | no | A valid string for formatting updated file commit messages. Default is `Updated %s`. |
 | retry-on-ratelimit | boolean (string) | no | If true and the writer encounters a GitHub rate-limit error trying to write data it will sleep until the "reset" time (published by GitHub) and retry the write operation. |
