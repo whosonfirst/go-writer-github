@@ -41,9 +41,6 @@ type GitHubAPIPullRequestWriter struct {
 	prefix             string
 	client             *github.Client
 	user               *github.User
-	retry_on_ratelimit bool
-	retry_attempts     int32
-	max_retry_attempts int32
 	logger             *log.Logger
 }
 
@@ -172,38 +169,6 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 
 	pr_entries := []github.TreeEntry{}
 
-	retry_on_ratelimit := false
-	str_ratelimit := q.Get("retry-on-ratelimit")
-
-	if str_ratelimit != "" {
-
-		r, err := strconv.ParseBool(str_ratelimit)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed to parse retry-on-ratelimit parameter, %w", err)
-		}
-
-		retry_on_ratelimit = r
-	}
-
-	max_retries := int32(10)
-	str_retries := q.Get("max-retry-attempts")
-
-	if str_retries != "" {
-
-		r, err := strconv.Atoi(str_retries)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed to parse max-retry-attempts parameter, %w", err)
-		}
-
-		if r < 0 {
-			r = 0
-		}
-
-		max_retries = int32(r)
-	}
-
 	logger := log.Default()
 
 	wr := &GitHubAPIPullRequestWriter{
@@ -222,8 +187,6 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		pr_ensure_repo:     pr_ensure_repo,
 		pr_entries:         pr_entries,
 		prefix:             prefix,
-		retry_on_ratelimit: retry_on_ratelimit,
-		max_retry_attempts: max_retries,
 		logger:             logger,
 	}
 
