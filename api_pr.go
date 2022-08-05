@@ -285,8 +285,8 @@ func (wr *GitHubAPIPullRequestWriter) WriterURI(ctx context.Context, key string)
 
 func (wr *GitHubAPIPullRequestWriter) getRef(ctx context.Context) (*github.Reference, error) {
 
-	base_branch := fmt.Sprintf("refs/head/%s", wr.base_branch)
-	pr_branch := fmt.Sprintf("refs/head/%s", wr.pr_branch)
+	base_branch := fmt.Sprintf("refs/heads/%s", wr.base_branch)
+	pr_branch := fmt.Sprintf("refs/heads/%s", wr.pr_branch)
 
 	pr_ref, _, _ := wr.client.Git.GetRef(ctx, wr.pr_owner, wr.pr_repo, pr_branch)
 
