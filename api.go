@@ -8,7 +8,6 @@ import (
 	wof_writer "github.com/whosonfirst/go-writer"
 	"golang.org/x/oauth2"
 	"io"
-	"io/ioutil"
 	_ "log"
 	"net/url"
 	"path/filepath"
@@ -17,6 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+const GITHUBAPI_SCHEME string = "githubapi"
 
 type GitHubAPIWriterCommitTemplates struct {
 	New    string
@@ -42,7 +43,7 @@ type GitHubAPIWriter struct {
 func init() {
 
 	ctx := context.Background()
-	wof_writer.RegisterWriter(ctx, "githubapi", NewGitHubAPIWriter)
+	wof_writer.RegisterWriter(ctx, GITHUBAPI_SCHEME, NewGitHubAPIWriter)
 }
 
 func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, error) {
@@ -178,7 +179,7 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 
 	<-wr.throttle
 
-	body, err := ioutil.ReadAll(fh)
+	body, err := io.ReadAll(fh)
 
 	if err != nil {
 		return 0, err
@@ -213,7 +214,6 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 	}
 
 	_, update_rsp, err := wr.client.Repositories.UpdateFile(ctx, wr.owner, wr.repo, url, update_opts)
-
 
 	if err != nil {
 
@@ -286,4 +286,8 @@ func (wr *GitHubAPIWriter) WriterURI(ctx context.Context, key string) string {
 	}
 
 	return uri
+}
+
+func (wr *GitHubAPIWriter) Close(ctx context.Context) error {
+	return nil
 }
