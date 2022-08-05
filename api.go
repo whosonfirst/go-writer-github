@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const GITHUBAPI_SCHEME string = "githubapi"
+
 type GitHubAPIWriterCommitTemplates struct {
 	New    string
 	Update string
@@ -42,7 +44,7 @@ type GitHubAPIWriter struct {
 func init() {
 
 	ctx := context.Background()
-	wof_writer.RegisterWriter(ctx, "githubapi", NewGitHubAPIWriter)
+	wof_writer.RegisterWriter(ctx, GITHUBAPI_SCHEME, NewGitHubAPIWriter)
 }
 
 func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, error) {
@@ -286,4 +288,27 @@ func (wr *GitHubAPIWriter) WriterURI(ctx context.Context, key string) string {
 	}
 
 	return uri
+}
+
+func (wr *GitHubAPIWriter) Clone(ctx context.Context, uri string) (writer.Writer, error) {
+	
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse URL, %w", err)
+	}
+
+	u.Scheme = GITHUBAPI_SCHEME
+	
+	if u.Host == "" {
+		u.Host = wr.owner
+	}
+
+	if u.Path == "" {
+		u.Path = filepath.Join(wr.repo, wr.branch)
+	}
+
+	q := u.Query()
+	
+	return NewGitHubWriterAPI(ctx, u.String())
 }
