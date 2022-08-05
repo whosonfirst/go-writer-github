@@ -193,8 +193,8 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		base_owner:         base_owner,
 		base_repo:          base_repo,
 		base_branch:        base_branch,
-		pr_owner: pr_owner,
-		pr_repo: pr_repo,
+		pr_owner:           pr_owner,
+		pr_repo:            pr_repo,
 		pr_branch:          pr_branch,
 		pr_author:          pr_author,
 		pr_email:           pr_email,
@@ -368,8 +368,8 @@ func (wr *GitHubAPIPullRequestWriter) createPR(ctx context.Context) error {
 
 	new_pr := &github.NewPullRequest{
 		Title:               &wr.pr_title,
-		Head:                &wr.base_branch,
-		Base:                &wr.pr_branch,
+		Head:                &wr.pr_branch,
+		Base:                &wr.base_branch,
 		Body:                &wr.pr_description,
 		MaintainerCanModify: github.Bool(true),
 	}
