@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/sfomuseum/runtimevar"
 	"net/url"
+	"strings"
 )
 
 // EnsureGitHubAccessToken ensures that 'writer_uri' contains a '?access_token=VALUE' parameter. This only
@@ -20,7 +21,7 @@ func EnsureGitHubAccessToken(ctx context.Context, writer_uri string, token_uri s
 		return "", fmt.Errorf("Failed to parse writer URI, %w", err)
 	}
 
-	if u.Scheme != "githubapi" {
+	if !strings.HasPrefix(u.Scheme, "githubapi") {
 		return writer_uri, nil
 	}
 
