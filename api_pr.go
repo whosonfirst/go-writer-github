@@ -193,6 +193,8 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		base_owner:         base_owner,
 		base_repo:          base_repo,
 		base_branch:        base_branch,
+		pr_owner: pr_owner,
+		pr_repo: pr_repo,
 		pr_branch:          pr_branch,
 		pr_author:          pr_author,
 		pr_email:           pr_email,
@@ -295,7 +297,7 @@ func (wr *GitHubAPIPullRequestWriter) getRef(ctx context.Context) (*github.Refer
 	base_ref, _, err := wr.client.Git.GetRef(ctx, wr.pr_owner, wr.pr_repo, base_branch)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to retrieve %s, %w", base_branch, err)
+		return nil, fmt.Errorf("Failed to retrieve base branch '%s' for %s/%s, %w", base_branch, wr.pr_owner, wr.pr_repo, err)
 	}
 
 	new_ref := &github.Reference{Ref: github.String(pr_branch), Object: &github.GitObject{SHA: base_ref.Object.SHA}}
