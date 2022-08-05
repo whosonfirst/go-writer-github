@@ -11,7 +11,7 @@ import (
 	wof_writer "github.com/whosonfirst/go-writer"
 	"golang.org/x/oauth2"
 	"io"
-	_ "log"
+	"log"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -37,12 +37,14 @@ type GitHubAPIPullRequestWriter struct {
 	pr_title           string
 	pr_description     string
 	pr_entries         []github.TreeEntry
+	pr_ensure_repo     bool
 	prefix             string
 	client             *github.Client
 	user               *github.User
 	retry_on_ratelimit bool
 	retry_attempts     int32
 	max_retry_attempts int32
+	logger             *log.Logger
 }
 
 func init() {
@@ -153,6 +155,21 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		return nil, fmt.Errorf("Invalid pr-email argument")
 	}
 
+	str_ensure_repo := q.Get("ensure-repo")
+
+	pr_ensure_repo := false
+
+	if str_ensure_repo != "" {
+
+		ensure_repo, err := strconv.ParseBool(str_ensure_repo)
+
+		if err != nil {
+			return nil, fmt.Errorf("Invalid ensure-repo argument, %w", err)
+		}
+
+		pr_ensure_repo = ensure_repo
+	}
+
 	pr_entries := []github.TreeEntry{}
 
 	retry_on_ratelimit := false
@@ -187,6 +204,8 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		max_retries = int32(r)
 	}
 
+	logger := log.Default()
+
 	wr := &GitHubAPIPullRequestWriter{
 		client:             client,
 		user:               user,
@@ -200,10 +219,12 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		pr_email:           pr_email,
 		pr_title:           pr_title,
 		pr_description:     pr_description,
+		pr_ensure_repo:     pr_ensure_repo,
 		pr_entries:         pr_entries,
 		prefix:             prefix,
 		retry_on_ratelimit: retry_on_ratelimit,
 		max_retry_attempts: max_retries,
+		logger:             logger,
 	}
 
 	return wr, nil
@@ -243,12 +264,22 @@ func (wr *GitHubAPIPullRequestWriter) Close(ctx context.Context) error {
 		return nil
 	}
 
-	// Fork repo if not exist?
+	if wr.pr_ensure_repo {
+
+		err := wr.ensureRepo(ctx)
+
+		if err != nil {
+			return fmt.Errorf("Failed to ensure repo, %w", err)
+		}
+	}
 
 	ref, err := wr.getRef(ctx)
 
 	if err != nil {
-		return fmt.Errorf("Failed to get ref, %w", err)
+
+		if err != nil {
+			return fmt.Errorf("Failed to get ref, %w", err)
+		}
 	}
 
 	tree, _, err := wr.client.Git.CreateTree(ctx, wr.pr_owner, wr.pr_repo, *ref.Object.SHA, wr.pr_entries)
@@ -281,6 +312,51 @@ func (wr *GitHubAPIPullRequestWriter) WriterURI(ctx context.Context, key string)
 	}
 
 	return uri
+}
+
+func (wr *GitHubAPIPullRequestWriter) ensureRepo(ctx context.Context) error {
+
+	// https://github.com/google/go-github/blob/master/github/repos_forks.go
+
+	_, _, err := wr.client.Repositories.Get(ctx, wr.pr_owner, wr.pr_repo)
+
+	if err == nil {
+		return nil
+	}
+
+	if wr.base_owner == wr.pr_owner {
+		return fmt.Errorf("Can not fork %s from %s to %s", wr.base_repo, wr.base_owner, wr.pr_owner)
+	}
+
+	fork_opts := &github.RepositoryCreateForkOptions{
+		Organization: wr.pr_owner,
+	}
+
+	repo, _, err := wr.client.Repositories.CreateFork(ctx, wr.base_owner, wr.base_repo, fork_opts)
+
+	if err != nil {
+
+		_, accepted_err := err.(*github.AcceptedError)
+
+		if !accepted_err {
+			return fmt.Errorf("Failed to create fork, %w", err)
+		}
+
+		time.Sleep(1)
+	}
+
+	if wr.base_repo != wr.pr_repo {
+
+		repo.Name = &wr.pr_repo
+
+		_, _, err := wr.client.Repositories.Edit(ctx, wr.pr_owner, wr.base_repo, repo)
+
+		if err != nil {
+			return fmt.Errorf("Failed to rename fork, %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (wr *GitHubAPIPullRequestWriter) getRef(ctx context.Context) (*github.Reference, error) {
@@ -366,9 +442,15 @@ func (wr *GitHubAPIPullRequestWriter) pushCommit(ctx context.Context, ref *githu
 // createPR creates a pull request. Based on: https://godoc.org/github.com/google/go-github/github#example-PullRequestsService-Create
 func (wr *GitHubAPIPullRequestWriter) createPR(ctx context.Context) error {
 
+	head := wr.pr_branch
+
+	if wr.pr_owner != wr.base_owner {
+		head = fmt.Sprintf("%s:%s", wr.pr_owner, wr.pr_branch)
+	}
+
 	new_pr := &github.NewPullRequest{
 		Title:               &wr.pr_title,
-		Head:                &wr.pr_branch,
+		Head:                &head, // &wr.pr_branch,
 		Base:                &wr.base_branch,
 		Body:                &wr.pr_description,
 		MaintainerCanModify: github.Bool(true),
