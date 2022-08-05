@@ -123,7 +123,7 @@ githubapi-pr://sfomuseum-data/sfomuseum-data-collection \
 	?access_token={access_token} \
 	&branch=main \
 	&prefix=data/ \
-	&pr-branch=aaron \
+	&pr-branch=aaronc \
 	&pr-title=testing \
 	&pr-description=testing \
 	&pr-email=aaron@localhost \
@@ -131,6 +131,10 @@ githubapi-pr://sfomuseum-data/sfomuseum-data-collection \
 	&pr-owner=aaronland \
 	&ensure-repo=true
 ```
+
+Which might yield something like this:
+
+![](docs/images/go-writer-github-api-pr.png)
 
 ## See also
 
