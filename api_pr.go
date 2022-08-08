@@ -26,22 +26,22 @@ const GITHUBAPI_PR_SCHEME string = "githubapi-pr"
 
 type GitHubAPIPullRequestWriter struct {
 	wof_writer.Writer
-	base_owner         string
-	base_repo          string
-	base_branch        string
-	pr_owner           string
-	pr_repo            string
-	pr_branch          string
-	pr_author          string
-	pr_email           string
-	pr_title           string
-	pr_description     string
-	pr_entries         []github.TreeEntry
-	pr_ensure_repo     bool
-	prefix             string
-	client             *github.Client
-	user               *github.User
-	logger             *log.Logger
+	base_owner     string
+	base_repo      string
+	base_branch    string
+	pr_owner       string
+	pr_repo        string
+	pr_branch      string
+	pr_author      string
+	pr_email       string
+	pr_title       string
+	pr_description string
+	pr_entries     []github.TreeEntry
+	pr_ensure_repo bool
+	prefix         string
+	client         *github.Client
+	user           *github.User
+	logger         *log.Logger
 }
 
 func init() {
@@ -172,22 +172,22 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 	logger := log.Default()
 
 	wr := &GitHubAPIPullRequestWriter{
-		client:             client,
-		user:               user,
-		base_owner:         base_owner,
-		base_repo:          base_repo,
-		base_branch:        base_branch,
-		pr_owner:           pr_owner,
-		pr_repo:            pr_repo,
-		pr_branch:          pr_branch,
-		pr_author:          pr_author,
-		pr_email:           pr_email,
-		pr_title:           pr_title,
-		pr_description:     pr_description,
-		pr_ensure_repo:     pr_ensure_repo,
-		pr_entries:         pr_entries,
-		prefix:             prefix,
-		logger:             logger,
+		client:         client,
+		user:           user,
+		base_owner:     base_owner,
+		base_repo:      base_repo,
+		base_branch:    base_branch,
+		pr_owner:       pr_owner,
+		pr_repo:        pr_repo,
+		pr_branch:      pr_branch,
+		pr_author:      pr_author,
+		pr_email:       pr_email,
+		pr_title:       pr_title,
+		pr_description: pr_description,
+		pr_ensure_repo: pr_ensure_repo,
+		pr_entries:     pr_entries,
+		prefix:         prefix,
+		logger:         logger,
 	}
 
 	return wr, nil
@@ -390,7 +390,7 @@ func (wr *GitHubAPIPullRequestWriter) pushCommit(ctx context.Context, ref *githu
 		return fmt.Errorf("Failed to create commit, %w", err)
 	}
 
-	// Attach the commit to the master branch.
+	// Attach the commit to the main branch.
 	ref.Object.SHA = newCommit.SHA
 
 	_, _, err = wr.client.Git.UpdateRef(ctx, wr.pr_owner, wr.pr_repo, ref, false)
