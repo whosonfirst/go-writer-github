@@ -31,6 +31,7 @@ type GitHubAPIBranchWriter struct {
 	commit_email       string
 	commit_description string
 	commit_entries     []github.TreeEntry
+	merge_branch bool
 	remove_branch      bool
 	prefix             string
 	client             *github.Client
@@ -102,6 +103,10 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 		return nil, fmt.Errorf("Invalid to-branch")
 	}
 
+	if to_branch == base_branch {
+		return nil, fmt.Errorf("Commit branch can not be the same as base branch")
+	}
+	
 	commit_branch := to_branch
 
 	commit_description := q.Get("description")
@@ -128,9 +133,22 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 
 	commit_entries := []github.TreeEntry{}
 
+	merge_branch := false
 	remove_branch := false
 
+	str_merge := q.Get("merge")
 	str_remove := q.Get("remove-on-merge")
+	
+	if str_merge != "" {
+
+		merge, err := strconv.ParseBool(str_merge)
+
+		if err != nil {
+			return nil, fmt.Errorf("Invalid merge parameter, %w", err)
+		}
+
+		merge_branch = merge
+	}
 
 	if str_remove != "" {
 
@@ -163,6 +181,7 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 		prefix:             prefix,
 		logger:             logger,
 		mutex:              mutex,
+		merge_branch: merge_branch,
 		remove_branch:      remove_branch,
 	}
 
@@ -170,12 +189,6 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 }
 
 func (wr *GitHubAPIBranchWriter) Write(ctx context.Context, uri string, r io.ReadSeeker) (int64, error) {
-
-	// Something something something account for cases with a bazillion commits and not keeping
-	// everything in memory until we call Close(). One option would be to keep a local map of io.ReadSeeker
-	// instances but then we will just have filehandle exhaustion problems. Add option to write to
-	// disk or something like a SQLite database (allowing a custom DSN to determine whether to write to
-	// disk or memory) ?
 
 	body, err := io.ReadAll(r)
 
@@ -243,19 +256,24 @@ func (wr *GitHubAPIBranchWriter) Close(ctx context.Context) error {
 		return fmt.Errorf("Failed to flush writer, %w", err)
 	}
 
+	if !wr.merge_branch {
+		return nil
+	}
+	
 	err = wr.mergeBranch(ctx)
 
 	if err != nil {
 		return fmt.Errorf("Failed to merge branch, %w", err)
 	}
 
-	if wr.remove_branch {
-
-		err := wr.removeBranch(ctx)
-
-		if err != nil {
-			return fmt.Errorf("Failed to remove branch, %w", err)
-		}
+	if !wr.remove_branch {
+		return nil
+	}
+	
+	err = wr.removeBranch(ctx)
+	
+	if err != nil {
+		return fmt.Errorf("Failed to remove branch, %w", err)
 	}
 
 	return nil
@@ -385,9 +403,11 @@ func (wr *GitHubAPIBranchWriter) mergeBranch(ctx context.Context) error {
 
 func (wr *GitHubAPIBranchWriter) removeBranch(ctx context.Context) error {
 
-	wr.logger.Printf("Remove %s\n", wr.commit_branch)
+	ref := fmt.Sprintf("heads/%s", wr.commit_branch)
+	
+	wr.logger.Printf("Remove %s\n", ref)
 
-	_, err := wr.client.Git.DeleteRef(ctx, wr.base_owner, wr.base_repo, wr.commit_branch)
+	_, err := wr.client.Git.DeleteRef(ctx, wr.base_owner, wr.base_repo, ref)
 
 	if err != nil {
 		return fmt.Errorf("Failed to remove branch, %w", err)
