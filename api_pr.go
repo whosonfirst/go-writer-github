@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/go-github/github"
-	wof_writer "github.com/whosonfirst/go-writer"
+	wof_writer "github.com/whosonfirst/go-writer/v2"
 	"golang.org/x/oauth2"
 	"io"
 	"log"
@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,6 +43,7 @@ type GitHubAPIPullRequestWriter struct {
 	client         *github.Client
 	user           *github.User
 	logger         *log.Logger
+	mutex          *sync.RWMutex
 }
 
 func init() {
@@ -169,6 +171,7 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 
 	pr_entries := []github.TreeEntry{}
 
+	mutex := new(sync.RWMutex)
 	logger := log.Default()
 
 	wr := &GitHubAPIPullRequestWriter{
@@ -188,6 +191,7 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		pr_entries:     pr_entries,
 		prefix:         prefix,
 		logger:         logger,
+		mutex:          mutex,
 	}
 
 	return wr, nil
@@ -216,12 +220,18 @@ func (wr *GitHubAPIPullRequestWriter) Write(ctx context.Context, uri string, r i
 		Mode:    github.String("100644"),
 	}
 
+	wr.mutex.Lock()
+	defer wr.mutex.Unlock()
+
 	wr.pr_entries = append(wr.pr_entries, e)
 
 	return 0, nil
 }
 
-func (wr *GitHubAPIPullRequestWriter) Close(ctx context.Context) error {
+func (wr *GitHubAPIPullRequestWriter) Flush(ctx context.Context) error {
+
+	wr.mutex.Lock()
+	defer wr.mutex.Unlock()
 
 	if len(wr.pr_entries) == 0 {
 		return nil
@@ -263,6 +273,15 @@ func (wr *GitHubAPIPullRequestWriter) Close(ctx context.Context) error {
 		return fmt.Errorf("Failed to create PR, %w", err)
 	}
 
+	return nil
+}
+
+func (wr *GitHubAPIPullRequestWriter) Close(ctx context.Context) error {
+	return wr.Flush(ctx)
+}
+
+func (wr *GitHubAPIPullRequestWriter) SetLogger(ctx context.Context, logger *log.Logger) error {
+	wr.logger = logger
 	return nil
 }
 

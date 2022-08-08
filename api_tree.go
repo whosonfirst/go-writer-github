@@ -5,20 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/go-github/github"
-	wof_writer "github.com/whosonfirst/go-writer"
+	wof_writer "github.com/whosonfirst/go-writer/v2"
 	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
 const GITHUBAPI_TREE_SCHEME string = "githubapi-tree"
-
-// base_ is the thing a PR is being created "against"
-// pr_ is the thing where the PR is being created
 
 type GitHubAPITreeWriter struct {
 	wof_writer.Writer
@@ -30,7 +28,6 @@ type GitHubAPITreeWriter struct {
 	commit_branch      string
 	commit_author      string
 	commit_email       string
-	commit_title       string
 	commit_description string
 	commit_entries     []github.TreeEntry
 	commit_ensure_repo bool
@@ -38,6 +35,7 @@ type GitHubAPITreeWriter struct {
 	client             *github.Client
 	user               *github.User
 	logger             *log.Logger
+	mutex              *sync.RWMutex
 }
 
 func init() {
@@ -99,17 +97,13 @@ func NewGitHubAPITreeWriter(ctx context.Context, uri string) (wof_writer.Writer,
 	commit_repo := base_repo
 	commit_branch := base_branch
 
-	commit_title := q.Get("title")
+	to_branch := q.Get("to-branch")
 
-	if commit_title == "" {
-		return nil, fmt.Errorf("Invalid title")
+	if to_branch != "" {
+		commit_branch = to_branch
 	}
 
 	commit_description := q.Get("description")
-
-	if commit_title == "" {
-		return nil, fmt.Errorf("Invalid description")
-	}
 
 	commit_author := q.Get("author")
 
@@ -135,6 +129,8 @@ func NewGitHubAPITreeWriter(ctx context.Context, uri string) (wof_writer.Writer,
 
 	logger := log.Default()
 
+	mutex := new(sync.RWMutex)
+
 	wr := &GitHubAPITreeWriter{
 		client:             client,
 		user:               user,
@@ -146,11 +142,11 @@ func NewGitHubAPITreeWriter(ctx context.Context, uri string) (wof_writer.Writer,
 		commit_branch:      commit_branch,
 		commit_author:      commit_author,
 		commit_email:       commit_email,
-		commit_title:       commit_title,
 		commit_description: commit_description,
 		commit_entries:     commit_entries,
 		prefix:             prefix,
 		logger:             logger,
+		mutex:              mutex,
 	}
 
 	return wr, nil
@@ -179,12 +175,19 @@ func (wr *GitHubAPITreeWriter) Write(ctx context.Context, uri string, r io.ReadS
 		Mode:    github.String("100644"),
 	}
 
+	wr.mutex.Lock()
+	defer wr.mutex.Unlock()
+
 	wr.commit_entries = append(wr.commit_entries, e)
 
+	wr.logger.Printf("Add %s\n", wr_uri)
 	return 0, nil
 }
 
-func (wr *GitHubAPITreeWriter) Close(ctx context.Context) error {
+func (wr *GitHubAPITreeWriter) Flush(ctx context.Context) error {
+
+	wr.mutex.Lock()
+	defer wr.mutex.Unlock()
 
 	if len(wr.commit_entries) == 0 {
 		return nil
@@ -211,6 +214,16 @@ func (wr *GitHubAPITreeWriter) Close(ctx context.Context) error {
 		return fmt.Errorf("Failed to push commit, %w", err)
 	}
 
+	wr.commit_entries = []github.TreeEntry{}
+	return nil
+}
+
+func (wr *GitHubAPITreeWriter) Close(ctx context.Context) error {
+	return wr.Flush(ctx)
+}
+
+func (wr *GitHubAPITreeWriter) SetLogger(ctx context.Context, logger *log.Logger) error {
+	wr.logger = logger
 	return nil
 }
 
@@ -233,6 +246,7 @@ func (wr *GitHubAPITreeWriter) getRef(ctx context.Context) (*github.Reference, e
 	commit_ref, _, _ := wr.client.Git.GetRef(ctx, wr.commit_owner, wr.commit_repo, commit_branch)
 
 	if commit_ref != nil {
+		wr.logger.Println("OK REF", commit_branch)
 		return commit_ref, nil
 	}
 
