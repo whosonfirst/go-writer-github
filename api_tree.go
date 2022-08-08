@@ -15,12 +15,12 @@ import (
 	"time"
 )
 
-const GITHUBAPI_MULTI_SCHEME string = "githubapi-multi"
+const GITHUBAPI_TREE_SCHEME string = "githubapi-tree"
 
 // base_ is the thing a PR is being created "against"
 // pr_ is the thing where the PR is being created
 
-type GitHubAPIMultiWriter struct {
+type GitHubAPITreeWriter struct {
 	wof_writer.Writer
 	base_owner         string
 	base_repo          string
@@ -43,10 +43,10 @@ type GitHubAPIMultiWriter struct {
 func init() {
 
 	ctx := context.Background()
-	wof_writer.RegisterWriter(ctx, GITHUBAPI_MULTI_SCHEME, NewGitHubAPIMultiWriter)
+	wof_writer.RegisterWriter(ctx, GITHUBAPI_TREE_SCHEME, NewGitHubAPITreeWriter)
 }
 
-func NewGitHubAPIMultiWriter(ctx context.Context, uri string) (wof_writer.Writer, error) {
+func NewGitHubAPITreeWriter(ctx context.Context, uri string) (wof_writer.Writer, error) {
 
 	u, err := url.Parse(uri)
 
@@ -97,26 +97,21 @@ func NewGitHubAPIMultiWriter(ctx context.Context, uri string) (wof_writer.Writer
 
 	commit_owner := base_owner
 	commit_repo := base_repo
+	commit_branch := base_branch
 
-	commit_branch := q.Get("pr-branch")
-
-	if commit_branch == "" {
-		commit_branch = base_branch
-	}
-
-	commit_title := q.Get("commit-title")
+	commit_title := q.Get("title")
 
 	if commit_title == "" {
 		return nil, fmt.Errorf("Invalid title")
 	}
 
-	commit_description := q.Get("commit-description")
+	commit_description := q.Get("description")
 
 	if commit_title == "" {
 		return nil, fmt.Errorf("Invalid description")
 	}
 
-	commit_author := q.Get("commit-author")
+	commit_author := q.Get("author")
 
 	if commit_author == "" {
 		commit_author = user.GetName()
@@ -126,7 +121,7 @@ func NewGitHubAPIMultiWriter(ctx context.Context, uri string) (wof_writer.Writer
 		return nil, fmt.Errorf("Invalid author")
 	}
 
-	commit_email := q.Get("commit-email")
+	commit_email := q.Get("email")
 
 	if commit_email == "" {
 		commit_email = user.GetEmail()
@@ -140,7 +135,7 @@ func NewGitHubAPIMultiWriter(ctx context.Context, uri string) (wof_writer.Writer
 
 	logger := log.Default()
 
-	wr := &GitHubAPIMultiWriter{
+	wr := &GitHubAPITreeWriter{
 		client:             client,
 		user:               user,
 		base_owner:         base_owner,
@@ -161,7 +156,7 @@ func NewGitHubAPIMultiWriter(ctx context.Context, uri string) (wof_writer.Writer
 	return wr, nil
 }
 
-func (wr *GitHubAPIMultiWriter) Write(ctx context.Context, uri string, r io.ReadSeeker) (int64, error) {
+func (wr *GitHubAPITreeWriter) Write(ctx context.Context, uri string, r io.ReadSeeker) (int64, error) {
 
 	// Something something something account for cases with a bazillion commits and not keeping
 	// everything in memory until we call Close(). One option would be to keep a local map of io.ReadSeeker
@@ -189,7 +184,7 @@ func (wr *GitHubAPIMultiWriter) Write(ctx context.Context, uri string, r io.Read
 	return 0, nil
 }
 
-func (wr *GitHubAPIMultiWriter) Close(ctx context.Context) error {
+func (wr *GitHubAPITreeWriter) Close(ctx context.Context) error {
 
 	if len(wr.commit_entries) == 0 {
 		return nil
@@ -219,7 +214,7 @@ func (wr *GitHubAPIMultiWriter) Close(ctx context.Context) error {
 	return nil
 }
 
-func (wr *GitHubAPIMultiWriter) WriterURI(ctx context.Context, key string) string {
+func (wr *GitHubAPITreeWriter) WriterURI(ctx context.Context, key string) string {
 
 	uri := key
 
@@ -230,7 +225,7 @@ func (wr *GitHubAPIMultiWriter) WriterURI(ctx context.Context, key string) strin
 	return uri
 }
 
-func (wr *GitHubAPIMultiWriter) getRef(ctx context.Context) (*github.Reference, error) {
+func (wr *GitHubAPITreeWriter) getRef(ctx context.Context) (*github.Reference, error) {
 
 	base_branch := fmt.Sprintf("refs/heads/%s", wr.base_branch)
 	commit_branch := fmt.Sprintf("refs/heads/%s", wr.commit_branch)
@@ -259,7 +254,7 @@ func (wr *GitHubAPIMultiWriter) getRef(ctx context.Context) (*github.Reference, 
 }
 
 // pushCommit creates the commit in the given reference using the given tree.
-func (wr *GitHubAPIMultiWriter) pushCommit(ctx context.Context, ref *github.Reference, tree *github.Tree) error {
+func (wr *GitHubAPITreeWriter) pushCommit(ctx context.Context, ref *github.Reference, tree *github.Tree) error {
 
 	// Get the parent commit to attach the commit to.
 
