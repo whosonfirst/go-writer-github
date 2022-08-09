@@ -271,7 +271,7 @@ func (wr *GitHubAPIPullRequestWriter) Flush(ctx context.Context) error {
 }
 
 func (wr *GitHubAPIPullRequestWriter) Close(ctx context.Context) error {
-	
+
 	err := wr.Flush(ctx)
 
 	if err != nil {
