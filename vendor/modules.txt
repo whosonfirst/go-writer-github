@@ -148,9 +148,9 @@ github.com/sfomuseum/runtimevar
 # github.com/whosonfirst/go-ioutil v1.0.2
 ## explicit
 github.com/whosonfirst/go-ioutil
-# github.com/whosonfirst/go-writer/v2 v2.0.0
+# github.com/whosonfirst/go-writer/v3 v3.0.0
 ## explicit
-github.com/whosonfirst/go-writer/v2
+github.com/whosonfirst/go-writer/v3
 # go.opencensus.io v0.23.0
 go.opencensus.io
 go.opencensus.io/internal

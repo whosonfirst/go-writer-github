@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/whosonfirst/go-ioutil"
-	"github.com/whosonfirst/go-writer/v2"
+	"github.com/whosonfirst/go-writer/v3"
 	"strings"
 	"testing"
 	"time"
