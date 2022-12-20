@@ -41,7 +41,7 @@ func EnsureGitHubAccessToken(ctx context.Context, writer_uri string, token_uri s
 	if err != nil {
 		return "", fmt.Errorf("Failed to expand token URI, %w", err)
 	}
-	
+
 	q.Del("access_token")
 	q.Set("access_token", token)
 
