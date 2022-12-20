@@ -382,7 +382,7 @@ func (wr *GitHubAPIPullRequestWriter) pushCommit(ctx context.Context, ref *githu
 	// Get the parent commit to attach the commit to.
 
 	list_opts := &github.ListOptions{}
-	
+
 	parent, _, err := wr.client.Repositories.GetCommit(ctx, wr.pr_owner, wr.pr_repo, *ref.Object.SHA, list_opts)
 
 	if err != nil {
