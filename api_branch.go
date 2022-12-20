@@ -338,8 +338,6 @@ func (wr *GitHubAPIBranchWriter) pushCommit(ctx context.Context, ref *github.Ref
 
 	// Get the parent commit to attach the commit to.
 
-	// pagination
-	// https://pkg.go.dev/github.com/google/go-github/v48/github#ListOptions
 	list_opts := &github.ListOptions{}
 
 	parent, _, err := wr.client.Repositories.GetCommit(ctx, wr.commit_owner, wr.commit_repo, *ref.Object.SHA, list_opts)
