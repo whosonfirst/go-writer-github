@@ -3,7 +3,7 @@ package writer
 import (
 	"context"
 	"fmt"
-	"github.com/sfomuseum/runtimevar"
+	// "github.com/sfomuseum/runtimevar"
 	"net/url"
 	"strings"
 )
@@ -36,12 +36,14 @@ func EnsureGitHubAccessToken(ctx context.Context, writer_uri string, token_uri s
 		return writer_uri, nil
 	}
 
+	/*
 	token, err = runtimevar.StringVar(ctx, token_uri)
 
 	if err != nil {
 		return "", fmt.Errorf("Failed to expand token URI, %w", err)
 	}
-
+	*/
+	
 	q.Del("access_token")
 	q.Set("access_token", token)
 

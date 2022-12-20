@@ -2,7 +2,7 @@ package writer
 
 import (
 	"context"
-	_ "gocloud.dev/runtimevar/constantvar"
+	// _ "gocloud.dev/runtimevar/constantvar"
 	"testing"
 )
 
