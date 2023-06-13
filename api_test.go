@@ -4,11 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/whosonfirst/go-ioutil"
-	"github.com/whosonfirst/go-writer/v3"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/whosonfirst/go-ioutil"
+	"github.com/whosonfirst/go-writer/v3"
 )
 
 var source = flag.String("source", "", "A valid githubapi:// (go-writer-github) URI.")
