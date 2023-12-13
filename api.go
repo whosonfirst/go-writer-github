@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +40,7 @@ type GitHubAPIWriter struct {
 	retry_on_conflict  bool
 	retry_attempts     int32
 	max_retry_attempts int32
+	mu                 *sync.RWMutex
 }
 
 func init() {
@@ -87,11 +89,20 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	users := client.Users
-	user, _, err := users.Get(ctx, "")
+	var user *github.User
 
-	if err != nil {
-		return nil, err
+	ensure_user := false
+
+	if ensure_user {
+
+		var err error
+
+		users := client.Users
+		user, _, err = users.Get(ctx, "")
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	new_template := q.Get("new")
@@ -171,6 +182,7 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 		retry_on_ratelimit: retry_on_ratelimit,
 		retry_on_conflict:  retry_on_conflict,
 		max_retry_attempts: max_retries,
+		mu:                 new(sync.RWMutex),
 	}
 
 	return wr, nil
@@ -184,6 +196,22 @@ func (wr *GitHubAPIWriter) Write(ctx context.Context, uri string, fh io.ReadSeek
 
 	if err != nil {
 		return 0, err
+	}
+
+	if wr.user == nil {
+
+		wr.mu.Lock()
+
+		users := wr.client.Users
+		user, _, err := users.Get(ctx, "")
+
+		if err != nil {
+			wr.mu.Unlock()
+			return 0, fmt.Errorf("Failed to determine user for client, %w", err)
+		}
+
+		wr.user = user
+		wr.mu.Unlock()
 	}
 
 	url := wr.WriterURI(ctx, uri)
