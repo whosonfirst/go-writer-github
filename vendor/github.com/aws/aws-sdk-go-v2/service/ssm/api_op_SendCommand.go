@@ -4,14 +4,9 @@ package ssm
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
-	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -37,11 +32,13 @@ type SendCommandInput struct {
 	// The name of the Amazon Web Services Systems Manager document (SSM document) to
 	// run. This can be a public document or a custom document. To run a shared
 	// document belonging to another account, specify the document Amazon Resource Name
-	// (ARN). For more information about how to use shared documents, see Using shared
-	// SSM documents (https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-using-shared.html)
-	// in the Amazon Web Services Systems Manager User Guide. If you specify a document
-	// name or ARN that hasn't been shared with your account, you receive an
-	// InvalidDocument error.
+	// (ARN). For more information about how to use shared documents, see [Sharing SSM documents]in the
+	// Amazon Web Services Systems Manager User Guide.
+	//
+	// If you specify a document name or ARN that hasn't been shared with your
+	// account, you receive an InvalidDocument error.
+	//
+	// [Sharing SSM documents]: https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-using-shared.html
 	//
 	// This member is required.
 	DocumentName *string
@@ -50,8 +47,8 @@ type SendCommandInput struct {
 	AlarmConfiguration *types.AlarmConfiguration
 
 	// Enables Amazon Web Services Systems Manager to send Run Command output to
-	// Amazon CloudWatch Logs. Run Command is a capability of Amazon Web Services
-	// Systems Manager.
+	// Amazon CloudWatch Logs. Run Command is a tool in Amazon Web Services Systems
+	// Manager.
 	CloudWatchOutputConfig *types.CloudWatchOutputConfig
 
 	// User-specified information about the command, such as a brief description of
@@ -59,44 +56,59 @@ type SendCommandInput struct {
 	Comment *string
 
 	// The Sha256 or Sha1 hash created by the system when the document was created.
+	//
 	// Sha1 hashes have been deprecated.
 	DocumentHash *string
 
-	// Sha256 or Sha1. Sha1 hashes have been deprecated.
+	// Sha256 or Sha1.
+	//
+	// Sha1 hashes have been deprecated.
 	DocumentHashType types.DocumentHashType
 
 	// The SSM document version to use in the request. You can specify $DEFAULT,
 	// $LATEST, or a specific version number. If you run commands by using the Command
 	// Line Interface (Amazon Web Services CLI), then you must escape the first two
 	// options by using a backslash. If you specify a version number, then you don't
-	// need to use the backslash. For example: --document-version "\$DEFAULT"
-	// --document-version "\$LATEST" --document-version "3"
+	// need to use the backslash. For example:
+	//
+	// --document-version "\$DEFAULT"
+	//
+	// --document-version "\$LATEST"
+	//
+	// --document-version "3"
 	DocumentVersion *string
 
 	// The IDs of the managed nodes where the command should run. Specifying managed
 	// node IDs is most useful when you are targeting a limited number of managed
-	// nodes, though you can specify up to 50 IDs. To target a larger number of managed
-	// nodes, or if you prefer not to list individual node IDs, we recommend using the
-	// Targets option instead. Using Targets , which accepts tag key-value pairs to
-	// identify the managed nodes to send commands to, you can a send command to tens,
-	// hundreds, or thousands of nodes at once. For more information about how to use
-	// targets, see Using targets and rate controls to send commands to a fleet (https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html)
-	// in the Amazon Web Services Systems Manager User Guide.
+	// nodes, though you can specify up to 50 IDs.
+	//
+	// To target a larger number of managed nodes, or if you prefer not to list
+	// individual node IDs, we recommend using the Targets option instead. Using
+	// Targets , which accepts tag key-value pairs to identify the managed nodes to
+	// send commands to, you can a send command to tens, hundreds, or thousands of
+	// nodes at once.
+	//
+	// For more information about how to use targets, see [Run commands at scale] in the Amazon Web Services
+	// Systems Manager User Guide.
+	//
+	// [Run commands at scale]: https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html
 	InstanceIds []string
 
 	// (Optional) The maximum number of managed nodes that are allowed to run the
 	// command at the same time. You can specify a number such as 10 or a percentage
 	// such as 10%. The default value is 50 . For more information about how to use
-	// MaxConcurrency , see Using concurrency controls (https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html#send-commands-velocity)
-	// in the Amazon Web Services Systems Manager User Guide.
+	// MaxConcurrency , see [Using concurrency controls] in the Amazon Web Services Systems Manager User Guide.
+	//
+	// [Using concurrency controls]: https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html#send-commands-velocity
 	MaxConcurrency *string
 
 	// The maximum number of errors allowed without the command failing. When the
 	// command fails one more time beyond the value of MaxErrors , the systems stops
 	// sending the command to additional targets. You can specify a number like 10 or a
 	// percentage like 10%. The default value is 0 . For more information about how to
-	// use MaxErrors , see Using error controls (https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html#send-commands-maxerrors)
-	// in the Amazon Web Services Systems Manager User Guide.
+	// use MaxErrors , see [Using error controls] in the Amazon Web Services Systems Manager User Guide.
+	//
+	// [Using error controls]: https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html#send-commands-maxerrors
 	MaxErrors *string
 
 	// Configurations for sending notifications.
@@ -119,20 +131,28 @@ type SendCommandInput struct {
 
 	// The ARN of the Identity and Access Management (IAM) service role to use to
 	// publish Amazon Simple Notification Service (Amazon SNS) notifications for Run
-	// Command commands. This role must provide the sns:Publish permission for your
-	// notification topic. For information about creating and using this service role,
-	// see Monitoring Systems Manager status changes using Amazon SNS notifications (https://docs.aws.amazon.com/systems-manager/latest/userguide/monitoring-sns-notifications.html)
-	// in the Amazon Web Services Systems Manager User Guide.
+	// Command commands.
+	//
+	// This role must provide the sns:Publish permission for your notification topic.
+	// For information about creating and using this service role, see [Monitoring Systems Manager status changes using Amazon SNS notifications]in the Amazon
+	// Web Services Systems Manager User Guide.
+	//
+	// [Monitoring Systems Manager status changes using Amazon SNS notifications]: https://docs.aws.amazon.com/systems-manager/latest/userguide/monitoring-sns-notifications.html
 	ServiceRoleArn *string
 
 	// An array of search criteria that targets managed nodes using a Key,Value
 	// combination that you specify. Specifying targets is most useful when you want to
 	// send a command to a large number of managed nodes at once. Using Targets , which
 	// accepts tag key-value pairs to identify managed nodes, you can send a command to
-	// tens, hundreds, or thousands of nodes at once. To send a command to a smaller
-	// number of managed nodes, you can use the InstanceIds option instead. For more
-	// information about how to use targets, see Sending commands to a fleet (https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html)
-	// in the Amazon Web Services Systems Manager User Guide.
+	// tens, hundreds, or thousands of nodes at once.
+	//
+	// To send a command to a smaller number of managed nodes, you can use the
+	// InstanceIds option instead.
+	//
+	// For more information about how to use targets, see [Run commands at scale] in the Amazon Web Services
+	// Systems Manager User Guide.
+	//
+	// [Run commands at scale]: https://docs.aws.amazon.com/systems-manager/latest/userguide/send-commands-multiple.html
 	Targets []types.Target
 
 	// If this time is reached and the command hasn't already started running, it
@@ -155,6 +175,9 @@ type SendCommandOutput struct {
 }
 
 func (c *Client) addOperationSendCommandMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpSendCommand{}, middleware.After)
 	if err != nil {
 		return err
@@ -163,34 +186,38 @@ func (c *Client) addOperationSendCommandMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "SendCommand"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -202,7 +229,16 @@ func (c *Client) addOperationSendCommandMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSendCommandResolveEndpointMiddleware(stack, options); err != nil {
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpSendCommandValidationMiddleware(stack); err != nil {
@@ -211,7 +247,7 @@ func (c *Client) addOperationSendCommandMiddlewares(stack *middleware.Stack, opt
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opSendCommand(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -223,7 +259,19 @@ func (c *Client) addOperationSendCommandMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
@@ -233,130 +281,6 @@ func newServiceMetadataMiddleware_opSendCommand(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ssm",
 		OperationName: "SendCommand",
 	}
-}
-
-type opSendCommandResolveEndpointMiddleware struct {
-	EndpointResolver EndpointResolverV2
-	BuiltInResolver  builtInParameterResolver
-}
-
-func (*opSendCommandResolveEndpointMiddleware) ID() string {
-	return "ResolveEndpointV2"
-}
-
-func (m *opSendCommandResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
-	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
-) {
-	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
-		return next.HandleSerialize(ctx, in)
-	}
-
-	req, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
-	}
-
-	if m.EndpointResolver == nil {
-		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
-	}
-
-	params := EndpointParameters{}
-
-	m.BuiltInResolver.ResolveBuiltIns(&params)
-
-	var resolvedEndpoint smithyendpoints.Endpoint
-	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
-	if err != nil {
-		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
-	}
-
-	req.URL = &resolvedEndpoint.URI
-
-	for k := range resolvedEndpoint.Headers {
-		req.Header.Set(
-			k,
-			resolvedEndpoint.Headers.Get(k),
-		)
-	}
-
-	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
-	if err != nil {
-		var nfe *internalauth.NoAuthenticationSchemesFoundError
-		if errors.As(err, &nfe) {
-			// if no auth scheme is found, default to sigv4
-			signingName := "ssm"
-			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-
-		}
-		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
-		if errors.As(err, &ue) {
-			return out, metadata, fmt.Errorf(
-				"This operation requests signer version(s) %v but the client only supports %v",
-				ue.UnsupportedSchemes,
-				internalauth.SupportedSchemes,
-			)
-		}
-	}
-
-	for _, authScheme := range authSchemes {
-		switch authScheme.(type) {
-		case *internalauth.AuthenticationSchemeV4:
-			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
-			var signingName, signingRegion string
-			if v4Scheme.SigningName == nil {
-				signingName = "ssm"
-			} else {
-				signingName = *v4Scheme.SigningName
-			}
-			if v4Scheme.SigningRegion == nil {
-				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
-			} else {
-				signingRegion = *v4Scheme.SigningRegion
-			}
-			if v4Scheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-			break
-		case *internalauth.AuthenticationSchemeV4A:
-			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
-			if v4aScheme.SigningName == nil {
-				v4aScheme.SigningName = aws.String("ssm")
-			}
-			if v4aScheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
-			break
-		case *internalauth.AuthenticationSchemeNone:
-			break
-		}
-	}
-
-	return next.HandleSerialize(ctx, in)
-}
-
-func addSendCommandResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
-	return stack.Serialize.Insert(&opSendCommandResolveEndpointMiddleware{
-		EndpointResolver: options.EndpointResolverV2,
-		BuiltInResolver: &builtInResolver{
-			Region:       options.Region,
-			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
-			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
-			Endpoint:     options.BaseEndpoint,
-		},
-	}, "ResolveEndpoint", middleware.After)
 }

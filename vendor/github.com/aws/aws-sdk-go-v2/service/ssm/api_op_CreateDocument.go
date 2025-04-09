@@ -4,14 +4,9 @@ package ssm
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
-	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -19,8 +14,10 @@ import (
 // Creates a Amazon Web Services Systems Manager (SSM document). An SSM document
 // defines the actions that Systems Manager performs on your managed nodes. For
 // more information about SSM documents, including information about supported
-// schemas, features, and syntax, see Amazon Web Services Systems Manager Documents (https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-ssm-docs.html)
-// in the Amazon Web Services Systems Manager User Guide.
+// schemas, features, and syntax, see [Amazon Web Services Systems Manager Documents]in the Amazon Web Services Systems Manager
+// User Guide.
+//
+// [Amazon Web Services Systems Manager Documents]: https://docs.aws.amazon.com/systems-manager/latest/userguide/documents.html
 func (c *Client) CreateDocument(ctx context.Context, params *CreateDocumentInput, optFns ...func(*Options)) (*CreateDocumentOutput, error) {
 	if params == nil {
 		params = &CreateDocumentInput{}
@@ -42,21 +39,39 @@ type CreateDocumentInput struct {
 	// document must not exceed 64KB. This quota also includes the content specified
 	// for input parameters at runtime. We recommend storing the contents for your new
 	// document in an external JSON or YAML file and referencing the file in a command.
+	//
 	// For examples, see the following topics in the Amazon Web Services Systems
 	// Manager User Guide.
-	//   - Create an SSM document (Amazon Web Services API) (https://docs.aws.amazon.com/systems-manager/latest/userguide/create-ssm-document-api.html)
-	//   - Create an SSM document (Amazon Web Services CLI) (https://docs.aws.amazon.com/systems-manager/latest/userguide/create-ssm-document-cli.html)
-	//   - Create an SSM document (API) (https://docs.aws.amazon.com/systems-manager/latest/userguide/create-ssm-document-api.html)
+	//
+	// [Create an SSM document (console)]
+	//
+	// [Create an SSM document (command line)]
+	//
+	// [Create an SSM document (API)]
+	//
+	// [Create an SSM document (console)]: https://docs.aws.amazon.com/systems-manager/latest/userguide/documents-using.html#create-ssm-console
+	// [Create an SSM document (command line)]: https://docs.aws.amazon.com/systems-manager/latest/userguide/documents-using.html#create-ssm-document-cli
+	// [Create an SSM document (API)]: https://docs.aws.amazon.com/systems-manager/latest/userguide/documents-using.html#create-ssm-document-api
 	//
 	// This member is required.
 	Content *string
 
-	// A name for the SSM document. You can't use the following strings as document
-	// name prefixes. These are reserved by Amazon Web Services for use as document
-	// name prefixes:
+	// A name for the SSM document.
+	//
+	// You can't use the following strings as document name prefixes. These are
+	// reserved by Amazon Web Services for use as document name prefixes:
+	//
 	//   - aws
+	//
 	//   - amazon
+	//
 	//   - amzn
+	//
+	//   - AWSEC2
+	//
+	//   - AWSConfigRemediation
+	//
+	//   - AWSSupport
 	//
 	// This member is required.
 	Name *string
@@ -66,15 +81,17 @@ type CreateDocumentInput struct {
 
 	// An optional field where you can specify a friendly name for the SSM document.
 	// This value can differ for each version of the document. You can update this
-	// value at a later time using the UpdateDocument operation.
+	// value at a later time using the UpdateDocumentoperation.
 	DisplayName *string
 
 	// Specify the document format for the request. The document format can be JSON,
 	// YAML, or TEXT. JSON is the default format.
 	DocumentFormat types.DocumentFormat
 
-	// The type of document to create. The DeploymentStrategy document type is an
-	// internal-use-only document type reserved for AppConfig.
+	// The type of document to create.
+	//
+	// The DeploymentStrategy document type is an internal-use-only document type
+	// reserved for AppConfig.
 	DocumentType types.DocumentType
 
 	// A list of SSM documents required by a document. This parameter is used
@@ -82,8 +99,9 @@ type CreateDocumentInput struct {
 	// SSM document, the user must also specify a required document for validation
 	// purposes. In this case, an ApplicationConfiguration document requires an
 	// ApplicationConfigurationSchema document for validation purposes. For more
-	// information, see What is AppConfig? (https://docs.aws.amazon.com/appconfig/latest/userguide/what-is-appconfig.html)
-	// in the AppConfig User Guide.
+	// information, see [What is AppConfig?]in the AppConfig User Guide.
+	//
+	// [What is AppConfig?]: https://docs.aws.amazon.com/appconfig/latest/userguide/what-is-appconfig.html
 	Requires []types.DocumentRequires
 
 	// Optional metadata that you assign to a resource. Tags enable you to categorize
@@ -91,8 +109,11 @@ type CreateDocumentInput struct {
 	// example, you might want to tag an SSM document to identify the types of targets
 	// or the environment where it will run. In this case, you could specify the
 	// following key-value pairs:
+	//
 	//   - Key=OS,Value=Windows
+	//
 	//   - Key=Environment,Value=Production
+	//
 	// To add tags to an existing SSM document, use the AddTagsToResource operation.
 	Tags []types.Tag
 
@@ -100,9 +121,10 @@ type CreateDocumentInput struct {
 	// For example, to run a document on EC2 instances, specify the following value:
 	// /AWS::EC2::Instance . If you specify a value of '/' the document can run on all
 	// types of resources. If you don't specify a value, the document can't run on any
-	// resources. For a list of valid resource types, see Amazon Web Services resource
-	// and property types reference (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html)
-	// in the CloudFormation User Guide.
+	// resources. For a list of valid resource types, see [Amazon Web Services resource and property types reference]in the CloudFormation User
+	// Guide.
+	//
+	// [Amazon Web Services resource and property types reference]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html
 	TargetType *string
 
 	// An optional field specifying the version of the artifact you are creating with
@@ -125,6 +147,9 @@ type CreateDocumentOutput struct {
 }
 
 func (c *Client) addOperationCreateDocumentMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateDocument{}, middleware.After)
 	if err != nil {
 		return err
@@ -133,34 +158,38 @@ func (c *Client) addOperationCreateDocumentMiddlewares(stack *middleware.Stack, 
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateDocument"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -172,7 +201,16 @@ func (c *Client) addOperationCreateDocumentMiddlewares(stack *middleware.Stack, 
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addCreateDocumentResolveEndpointMiddleware(stack, options); err != nil {
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateDocumentValidationMiddleware(stack); err != nil {
@@ -181,7 +219,7 @@ func (c *Client) addOperationCreateDocumentMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateDocument(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -193,7 +231,19 @@ func (c *Client) addOperationCreateDocumentMiddlewares(stack *middleware.Stack, 
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
@@ -203,130 +253,6 @@ func newServiceMetadataMiddleware_opCreateDocument(region string) *awsmiddleware
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ssm",
 		OperationName: "CreateDocument",
 	}
-}
-
-type opCreateDocumentResolveEndpointMiddleware struct {
-	EndpointResolver EndpointResolverV2
-	BuiltInResolver  builtInParameterResolver
-}
-
-func (*opCreateDocumentResolveEndpointMiddleware) ID() string {
-	return "ResolveEndpointV2"
-}
-
-func (m *opCreateDocumentResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
-	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
-) {
-	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
-		return next.HandleSerialize(ctx, in)
-	}
-
-	req, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
-	}
-
-	if m.EndpointResolver == nil {
-		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
-	}
-
-	params := EndpointParameters{}
-
-	m.BuiltInResolver.ResolveBuiltIns(&params)
-
-	var resolvedEndpoint smithyendpoints.Endpoint
-	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
-	if err != nil {
-		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
-	}
-
-	req.URL = &resolvedEndpoint.URI
-
-	for k := range resolvedEndpoint.Headers {
-		req.Header.Set(
-			k,
-			resolvedEndpoint.Headers.Get(k),
-		)
-	}
-
-	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
-	if err != nil {
-		var nfe *internalauth.NoAuthenticationSchemesFoundError
-		if errors.As(err, &nfe) {
-			// if no auth scheme is found, default to sigv4
-			signingName := "ssm"
-			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-
-		}
-		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
-		if errors.As(err, &ue) {
-			return out, metadata, fmt.Errorf(
-				"This operation requests signer version(s) %v but the client only supports %v",
-				ue.UnsupportedSchemes,
-				internalauth.SupportedSchemes,
-			)
-		}
-	}
-
-	for _, authScheme := range authSchemes {
-		switch authScheme.(type) {
-		case *internalauth.AuthenticationSchemeV4:
-			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
-			var signingName, signingRegion string
-			if v4Scheme.SigningName == nil {
-				signingName = "ssm"
-			} else {
-				signingName = *v4Scheme.SigningName
-			}
-			if v4Scheme.SigningRegion == nil {
-				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
-			} else {
-				signingRegion = *v4Scheme.SigningRegion
-			}
-			if v4Scheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-			break
-		case *internalauth.AuthenticationSchemeV4A:
-			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
-			if v4aScheme.SigningName == nil {
-				v4aScheme.SigningName = aws.String("ssm")
-			}
-			if v4aScheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
-			break
-		case *internalauth.AuthenticationSchemeNone:
-			break
-		}
-	}
-
-	return next.HandleSerialize(ctx, in)
-}
-
-func addCreateDocumentResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
-	return stack.Serialize.Insert(&opCreateDocumentResolveEndpointMiddleware{
-		EndpointResolver: options.EndpointResolverV2,
-		BuiltInResolver: &builtInResolver{
-			Region:       options.Region,
-			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
-			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
-			Endpoint:     options.BaseEndpoint,
-		},
-	}, "ResolveEndpoint", middleware.After)
 }
