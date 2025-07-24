@@ -77,7 +77,7 @@ func NewGitHubAPIWriter(ctx context.Context, uri string) (wof_writer.Writer, err
 	}
 
 	if q_branch != "" {
-		branch = AssignBranchPrefix(q_branch)
+		branch = q_branch
 	}
 
 	ts := oauth2.StaticTokenSource(
