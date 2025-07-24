@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v74/github"
 	wof_writer "github.com/whosonfirst/go-writer/v3"
 	"golang.org/x/oauth2"
 )
@@ -107,6 +107,8 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 	if to_branch == base_branch {
 		return nil, fmt.Errorf("Commit branch can not be the same as base branch")
 	}
+
+	to_branch = AssignBranchPrefix(to_branch)
 
 	commit_branch := to_branch
 
