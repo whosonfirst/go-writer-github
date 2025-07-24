@@ -354,7 +354,7 @@ func (wr *GitHubAPIBranchWriter) pushCommit(ctx context.Context, ref *github.Ref
 	date := time.Now()
 
 	author := &github.CommitAuthor{
-		Date:  &date,
+		Date:  &github.Timestamp{date},
 		Name:  &wr.commit_author,
 		Email: &wr.commit_email,
 	}
@@ -370,7 +370,9 @@ func (wr *GitHubAPIBranchWriter) pushCommit(ctx context.Context, ref *github.Ref
 		Parents: parents,
 	}
 
-	newCommit, _, err := wr.client.Git.CreateCommit(ctx, wr.commit_owner, wr.commit_repo, commit)
+	commit_opts := &github.CreateCommitOptions{}
+
+	newCommit, _, err := wr.client.Git.CreateCommit(ctx, wr.commit_owner, wr.commit_repo, commit, commit_opts)
 
 	if err != nil {
 		return fmt.Errorf("Failed to create commit, %w", err)
