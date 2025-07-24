@@ -101,7 +101,7 @@ func NewGitHubAPITreeWriter(ctx context.Context, uri string) (wof_writer.Writer,
 	to_branch := q.Get("to-branch")
 
 	if to_branch != "" {
-		commit_branch = to_branch
+		commit_branch = AssignBranchPrefix(to_branch)
 	}
 
 	commit_description := q.Get("description")

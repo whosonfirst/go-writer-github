@@ -108,9 +108,7 @@ func NewGitHubAPIBranchWriter(ctx context.Context, uri string) (wof_writer.Write
 		return nil, fmt.Errorf("Commit branch can not be the same as base branch")
 	}
 
-	to_branch = AssignBranchPrefix(to_branch)
-
-	commit_branch := to_branch
+	commit_branch := AssignBranchPrefix(to_branch)
 
 	commit_description := q.Get("description")
 

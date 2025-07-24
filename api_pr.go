@@ -123,6 +123,8 @@ func NewGitHubAPIPullRequestWriter(ctx context.Context, uri string) (wof_writer.
 		return nil, fmt.Errorf("pr-branch can not be the same as branch")
 	}
 
+	pr_branch = AssignBranchPrefix(pr_branch)
+	
 	pr_title := q.Get("pr-title")
 
 	if pr_title == "" {
